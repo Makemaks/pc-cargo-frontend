@@ -68,8 +68,8 @@
         <Column field="status" header="Status">
           <template #body="{ data }">
             <Tag
-              :value="formatStatus(data.status)"
-              :severity="statusSeverity(data.status)"
+              :value="jobStatusLabel(data.status)"
+              :severity="jobStatusSeverity(data.status)"
               class="job-status-tag"
             />
           </template>
@@ -87,22 +87,19 @@
           </template>
         </Column>
 
-        <!-- Actions -->
         <Column header="Actions" style="width: 160px">
           <template #body="{ data }">
             <div class="action-buttons">
               <Button
                 icon="pi pi-eye"
                 class="p-button-text p-button-sm"
-                @click="viewJob(data)"
+                @click="viewJob(data.id)"
               />
-
               <Button
                 icon="pi pi-pencil"
                 class="p-button-text p-button-sm"
-                @click="editJob(data)"
+                @click="editJob(data.id)"
               />
-
               <Button
                 icon="pi pi-trash"
                 class="p-button-text p-button-sm p-button-danger"
@@ -113,27 +110,41 @@
         </Column>
       </DataTable>
     </section>
+
+    <JobViewModal
+      v-model="showViewModal"
+      :job="selectedJob"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import JobService from '@/app/services/jobs'
 import { useJobStore } from '@/app/stores/job'
 import type { JobStatus } from '@/app/types/job-ui'
+import {
+  jobStatusLabel,
+  jobStatusSeverity
+} from '@/app/utils/jobStatus'
+import JobViewModal from '@/app/components/modals/JobViewModal.vue'
 
 const jobStore = useJobStore()
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
 
-onMounted(async () => {
-  await JobService.all()
-})
+const showViewModal = ref(false)
+const selectedJob = ref<any | null>(null)
 
+/**
+ * Fetch jobs via STORE
+ */
+onMounted(async () => {
+  await jobStore.fetchAll()
+})
 
 /**
  * Table rows (UI model)
@@ -141,14 +152,13 @@ onMounted(async () => {
 const jobs = computed(() =>
   jobStore.list.map(job => ({
     id: job.id,
-    reference: job.reference || '',
-    client: job.client?.name || '',
+    reference: job.reference,
+    client: job.client?.name ?? '',
     status: job.status,
-    revenue: job.financials?.totalRevenue ?? 0,
-    profit: job.financials?.grossProfit ?? 0,
+    revenue: job.financials.totalRevenue,
+    profit: job.financials.grossProfit,
   }))
 )
-
 
 /* KPI */
 const totalJobs = computed(() => jobStore.list.length)
@@ -162,58 +172,30 @@ const draftJobs = computed(() =>
   jobStore.list.filter(j => j.status === 'draft').length
 )
 
-/* Status helpers */
-function statusSeverity(status: JobStatus) {
-  switch (status) {
-    case 'completed': return 'success'
-    case 'in_transit': return 'info'
-    case 'draft': return 'warning'
-    default: return 'secondary'
-  }
-}
-
-function formatStatus(status: JobStatus) {
-  switch (status) {
-    case 'completed': return 'Completed'
-    case 'in_transit': return 'In Transit'
-    case 'draft': return 'Draft'
-    default: return status
-  }
-}
-
 /* Actions */
 function createJob() {
   router.push('/jobs/create')
 }
 
-function viewJob(job: { id: number }) {
-  router.push(`/jobs/${job.id}`)
+function viewJob(id: number) {
+  selectedJob.value = jobStore.getById(id) ?? null
+  showViewModal.value = true
 }
 
-function editJob(job: { id: number }) {
-  router.push(`/jobs/${job.id}/edit`)
+function editJob(id: number) {
+  router.push(`/jobs/${id}/edit`)
 }
 
-/**
- * ✅ Delete with confirmation modal
- */
 function confirmDelete(job: { id: number; reference: string }) {
   confirm.require({
     header: 'Delete Job',
-    message: `Are you sure you want to delete job ${job.reference}? This action cannot be undone.`,
+    message: `Are you sure you want to delete job ${job.reference}?`,
     icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Delete',
-    rejectLabel: 'Cancel',
     acceptClass: 'p-button-danger',
 
     accept: async () => {
       try {
-        await JobService.remove (job.id)
-
-        // Remove from store
-        jobStore.setJobs(
-          jobStore.list.filter(j => j.id !== job.id)
-        )
+        await jobStore.deleteJob(job.id)
 
         toast.add({
           severity: 'success',
@@ -222,8 +204,6 @@ function confirmDelete(job: { id: number; reference: string }) {
           life: 4000,
         })
       } catch (error: any) {
-        console.error('[Job Delete Error]', error)
-
         toast.add({
           severity: 'error',
           summary: 'Error',
@@ -237,6 +217,7 @@ function confirmDelete(job: { id: number; reference: string }) {
   })
 }
 </script>
+
 
 <style scoped>
 .jobs-page {

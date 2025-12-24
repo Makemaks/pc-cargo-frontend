@@ -30,6 +30,7 @@ import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import ConfirmationService from 'primevue/confirmationservice'
 import ConfirmDialog from 'primevue/confirmdialog'
+import Dialog from 'primevue/dialog'
 
 /* =========================
    App Init
@@ -51,6 +52,7 @@ app.use(ToastService)
 /* =========================
    Global Component Registration
 ========================= */
+app.component('Dialog', Dialog)
 app.component('Button', Button)
 app.component('DataTable', DataTable)
 app.component('Column', Column)

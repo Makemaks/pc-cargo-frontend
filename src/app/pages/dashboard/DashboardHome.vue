@@ -1,10 +1,12 @@
 <template>
   <div class="dashboard">
-    <!-- Page Title -->
+    <!-- ===============================
+         PAGE TITLE
+         =============================== -->
     <h1>Dashboard</h1>
 
     <!-- ===============================
-         TOP KPI WIDGETS
+         SECTION 1: KPI WIDGETS
          =============================== -->
     <div class="kpi-grid">
       <Card class="kpi-card">
@@ -13,7 +15,7 @@
             <i class="pi pi-briefcase kpi-icon" />
             <div>
               <span class="kpi-label">Active Jobs</span>
-              <span class="kpi-value">12</span>
+              <span class="kpi-value">{{ activeJobs }}</span>
             </div>
           </div>
         </template>
@@ -24,8 +26,8 @@
           <div class="kpi">
             <i class="pi pi-check-circle kpi-icon" />
             <div>
-              <span class="kpi-label">Completed Jobs (MTD)</span>
-              <span class="kpi-value">34</span>
+              <span class="kpi-label">Completed Jobs</span>
+              <span class="kpi-value">{{ completedJobs }}</span>
             </div>
           </div>
         </template>
@@ -36,8 +38,10 @@
           <div class="kpi">
             <i class="pi pi-dollar kpi-icon" />
             <div>
-              <span class="kpi-label">Revenue (MTD)</span>
-              <span class="kpi-value">$128,400</span>
+              <span class="kpi-label">Total Revenue</span>
+              <span class="kpi-value">
+                {{ formatCurrency(totalRevenue) }}
+              </span>
             </div>
           </div>
         </template>
@@ -48,8 +52,10 @@
           <div class="kpi">
             <i class="pi pi-chart-line kpi-icon" />
             <div>
-              <span class="kpi-label">Gross Profit (MTD)</span>
-              <span class="kpi-value">$42,950</span>
+              <span class="kpi-label">Gross Profit</span>
+              <span class="kpi-value">
+                {{ formatCurrency(totalGrossProfit) }}
+              </span>
             </div>
           </div>
         </template>
@@ -57,26 +63,40 @@
     </div>
 
     <!-- ===============================
-         CHARTS SECTION
+         SECTION 2: FULL-WIDTH REVENUE TREND
+         =============================== -->
+    <Card class="chart-card full-width">
+      <template #title>Revenue Trend</template>
+      <template #content>
+        <Chart
+          type="line"
+          :data="revenueTrendData"
+          :options="chartOptions"
+        />
+      </template>
+    </Card>
+
+    <!-- ===============================
+         SECTION 3: TWO EQUAL CHARTS
          =============================== -->
     <div class="charts-grid">
-      <Card>
+      <Card class="chart-card">
         <template #title>Job Status Overview</template>
         <template #content>
           <Chart
             type="doughnut"
-            :data="jobsChartData"
+            :data="jobStatusChartData"
             :options="chartOptions"
           />
         </template>
       </Card>
 
-      <Card>
-        <template #title>Revenue Trend</template>
+      <Card class="chart-card">
+        <template #title>Transport Mode Distribution</template>
         <template #content>
           <Chart
-            type="line"
-            :data="revenueChartData"
+            type="pie"
+            :data="transportModeChartData"
             :options="chartOptions"
           />
         </template>
@@ -86,60 +106,151 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
 import Card from 'primevue/card'
 import Chart from 'primevue/chart'
+import JobService from '@/app/services/jobs'
+import { useJobStore } from '@/app/stores/job'
 
-/**
- * Mock chart data (API-ready later)
- */
-const jobsChartData = {
-  labels: ['Draft', 'In Progress', 'Completed'],
-  datasets: [
-    {
-      data: [6, 12, 34],
-      backgroundColor: [
-        '#9AA6B2',   // muted
-        '#2c2a72',   // brand blue
-        '#2563eb',   // accent blue
-      ],
-    },
-  ],
-}
+/* ===============================
+   STORE
+=============================== */
+const jobStore = useJobStore()
 
-const revenueChartData = {
-  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
-  datasets: [
-    {
-      label: 'Revenue',
-      data: [42000, 38000, 51000, 46000, 58000],
-      borderColor: '#2c2a72',
-      backgroundColor: 'rgba(44, 42, 114, 0.15)',
-      tension: 0.4,
-      fill: true,
-    },
-  ],
-}
+onMounted(async () => {
+  if (jobStore.list.length === 0) {
+    await JobService.all()
+  }
+})
 
+/* ===============================
+   KPI COMPUTATIONS (REAL DATA)
+=============================== */
+const activeJobs = computed(
+  () => jobStore.list.filter(j => j.status === 'in_transit').length
+)
+
+const completedJobs = computed(
+  () => jobStore.list.filter(j => j.status === 'completed').length
+)
+
+const totalRevenue = computed(() =>
+  jobStore.list.reduce(
+    (sum, j) => sum + (j.financials?.totalRevenue ?? 0),
+    0
+  )
+)
+
+const totalGrossProfit = computed(() =>
+  jobStore.list.reduce(
+    (sum, j) => sum + (j.financials?.grossProfit ?? 0),
+    0
+  )
+)
+
+/* ===============================
+   JOB STATUS CHART
+=============================== */
+const jobStatusChartData = computed(() => {
+  const draft = jobStore.list.filter(j => j.status === 'draft').length
+  const inTransit = jobStore.list.filter(j => j.status === 'in_transit').length
+  const completed = jobStore.list.filter(j => j.status === 'completed').length
+
+  return {
+    labels: ['Draft', 'In Transit', 'Completed'],
+    datasets: [
+      {
+        data: [draft, inTransit, completed],
+        backgroundColor: ['#9AA6B2', '#2c2a72', '#2563eb'],
+      },
+    ],
+  }
+})
+
+/* ===============================
+   TRANSPORT MODE CHART
+=============================== */
+const transportModeChartData = computed(() => {
+  const counts = { road: 0, sea: 0, air: 0 }
+
+  jobStore.list.forEach(job => {
+    job.transports?.forEach(t => {
+      if (counts[t.transportMode as keyof typeof counts] !== undefined) {
+        counts[t.transportMode as keyof typeof counts]++
+      }
+    })
+  })
+
+  return {
+    labels: ['Road', 'Sea', 'Air'],
+    datasets: [
+      {
+        data: [counts.road, counts.sea, counts.air],
+        backgroundColor: ['#16a34a', '#2563eb', '#9333ea'],
+      },
+    ],
+  }
+})
+
+/* ===============================
+   REVENUE TREND (BY MONTH)
+=============================== */
+const revenueTrendData = computed(() => {
+  const map: Record<string, number> = {}
+
+  jobStore.list.forEach(job => {
+    if (!job.createdAt) return
+    const month = job.createdAt.slice(0, 7)
+    map[month] = (map[month] ?? 0) + (job.financials?.totalRevenue ?? 0)
+  })
+
+  const labels = Object.keys(map).sort()
+  const values = labels.map(l => map[l])
+
+  return {
+    labels,
+    datasets: [
+      {
+        label: 'Revenue',
+        data: values,
+        borderColor: '#2c2a72',
+        backgroundColor: 'rgba(44, 42, 114, 0.15)',
+        tension: 0.4,
+        fill: true,
+      },
+    ],
+  }
+})
+
+/* ===============================
+   CHART OPTIONS
+   (REFERENCE STYLE — NO FORCED HEIGHT)
+=============================== */
 const chartOptions = {
   plugins: {
     legend: {
-      labels: {
-        color: '#0f172a',
-      },
+      position: 'top',
+      labels: { color: '#9AA6B2' },
     },
   },
   scales: {
     x: {
-      ticks: {
-        color: '#9AA6B2',
-      },
+      ticks: { color: '#9AA6B2' },
     },
     y: {
-      ticks: {
-        color: '#9AA6B2',
-      },
+      ticks: { color: '#9AA6B2' },
     },
   },
+}
+
+/* ===============================
+   HELPERS
+=============================== */
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(value)
 }
 </script>
 
@@ -150,7 +261,9 @@ const chartOptions = {
   gap: 2rem;
 }
 
-/* KPI widgets */
+/* ===============================
+   KPI GRID
+=============================== */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -175,7 +288,6 @@ const chartOptions = {
 .kpi-label {
   font-size: 0.85rem;
   color: var(--pc-text-muted);
-  display: block;
 }
 
 .kpi-value {
@@ -184,14 +296,26 @@ const chartOptions = {
   color: var(--pc-text-main);
 }
 
-/* Charts */
+/* ===============================
+   CHARTS (REFERENCE LAYOUT)
+=============================== */
+.chart-card {
+  background-color: var(--pc-bg-panel);
+}
+
+.chart-card.full-width {
+  width: 100%;
+}
+
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
 }
 
-/* Responsive */
+/* ===============================
+   RESPONSIVE
+=============================== */
 @media (max-width: 1024px) {
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);

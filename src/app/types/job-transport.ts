@@ -7,7 +7,9 @@ export interface JobTransport {
   destination: string
   status: string
   createdAt: string
+  updatedAt?: string
 }
+
 
 export interface CreateJobTransportPayload {
   transport_mode: string

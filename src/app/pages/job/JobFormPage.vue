@@ -511,6 +511,7 @@ async function submit() {
         'origin',
         'destination',
         'sequence',
+        'status',
       ])
 
       if (!changed) {

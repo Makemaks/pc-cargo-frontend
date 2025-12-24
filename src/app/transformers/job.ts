@@ -35,6 +35,8 @@ export default {
         origin: t.origin,
         destination: t.destination,
         status: t.status,
+        createdAt: t.created_at ?? null,
+        updatedAt: t.updated_at ?? null,
       })),
 
       status: job.status,

@@ -30,6 +30,8 @@ export interface JobTransport {
   origin: string
   destination: string
   status: string
+  createdAt: string | null
+  updatedAt: string | null
 }
 
 export interface JobFinancials {

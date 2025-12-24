@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { Job } from '@/app/types/job'
+import JobService from '@/app/services/jobs'
 
 export const useJobStore = defineStore('job', {
   /**
@@ -7,6 +8,7 @@ export const useJobStore = defineStore('job', {
    */
   state: () => ({
     list: [] as Job[],
+    loading: false,
   }),
 
   /**
@@ -61,7 +63,7 @@ export const useJobStore = defineStore('job', {
     },
 
     /**
-     * Explicit replace (semantic clarity for show/update)
+     * Explicit replace (semantic clarity)
      */
     replaceJob(job: Job) {
       this.upsertJob(job)
@@ -75,10 +77,49 @@ export const useJobStore = defineStore('job', {
     },
 
     /**
-     * Remove job from store
+     * Remove job locally
      */
     remove(jobId: number) {
       this.list = this.list.filter(job => job.id !== jobId)
+    },
+
+    /**
+     * ============================
+     * CRUD (Store → Service)
+     * ============================
+     */
+
+    async fetchAll(params: { page?: number; limit?: number } = {}) {
+      this.loading = true
+      try {
+        const jobs = await JobService.all(params)
+        this.setJobs(jobs)
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async fetchOne(id: number): Promise<Job> {
+      const job = await JobService.show(id)
+      this.upsertJob(job)
+      return job
+    },
+
+    async create(payload: any): Promise<Job> {
+      const job = await JobService.create(payload)
+      this.upsertJob(job)
+      return job
+    },
+
+    async update(id: number, payload: any): Promise<Job> {
+      const job = await JobService.update(id, payload)
+      this.replaceJob(job)
+      return job
+    },
+
+    async deleteJob(id: number) {
+      await JobService.remove(id)
+      this.remove(id)
     },
   },
 })

@@ -8,7 +8,6 @@
 
 import http from '@/api/http'
 import jobTransformer from '@/app/transformers/job'
-import { useJobStore } from '@/app/stores/job'
 import type { Job } from '@/app/types/job'
 
 interface JobsParams {
@@ -16,35 +15,18 @@ interface JobsParams {
   limit?: number
 }
 
-const success = (
-  response: any,
-  resolve: (value: Job[]) => void
-) => {
-  const jobs = jobTransformer.fetchCollection(response.data.data)
+export default async function all(
+  params: JobsParams = {}
+): Promise<Job[]> {
+  const query = new URLSearchParams()
 
-  // ✅ Global state update (single source of truth)
-  const jobStore = useJobStore()
-  jobStore.setJobs(jobs)
+  if (params.page) query.append('page', params.page.toString())
+  if (params.limit) query.append('limit', params.limit.toString())
 
-  resolve(jobs)
+  const response = await http.get(
+    `/jobs${query.toString() ? `?${query}` : ''}`
+  )
+
+  // Laravel JsonResource → data.data
+  return jobTransformer.fetchCollection(response.data.data)
 }
-
-const failed = (
-  error: unknown,
-  reject: (reason?: unknown) => void
-) => {
-  reject(error)
-}
-
-export default (params: JobsParams = {}) =>
-  new Promise<Job[]>((resolve, reject) => {
-    const query = new URLSearchParams()
-
-    if (params.page) query.append('page', params.page.toString())
-    if (params.limit) query.append('limit', params.limit.toString())
-
-    http
-      .get(`/jobs${query.toString() ? `?${query}` : ''}`)
-      .then((response) => success(response, resolve))
-      .catch((error) => failed(error, reject))
-  })
