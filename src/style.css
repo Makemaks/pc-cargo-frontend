@@ -1,79 +1,220 @@
+/* =========================================================
+   Global Reset & Base Styles (PC Cargo)
+   ========================================================= */
+
+/* Box sizing reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   Root Variables (Brand + Layout)
+   ========================================================= */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* ===============================
+     Brand Colors (from logo)
+     =============================== */
+
+  --pc-primary: #2c2a72;
+  --pc-primary-dark: #1f1e5a;
+  --pc-primary-soft: #5b5a8e;
+
+  --pc-accent: #c62828;
+  --pc-accent-soft: #d24c4c;
+
+  /* ===============================
+     Page Palette (White → Grey)
+     =============================== */
+
+  /* PAGE BACKGROUND (noticeably grey) */
+  --pc-bg-page: #F1F5F9;
+
+  /* SECTIONS / WRAPPERS */
+  --pc-bg-panel: #E2E8F0;
+
+  /* BORDERS / DIVIDERS */
+  --pc-border: #CBD5E1;
+
+  /* MUTED TEXT */
+  --pc-text-muted: #64748B;
+
+  /* ===============================
+     Sidebar Palette
+     =============================== */
+
+  /* Sidebar slightly darker than page */
+  --pc-bg-sidebar: #E2E8F0;
+  --pc-sidebar-border: #CBD5E1;
+
+  --pc-text-inverse: #0f172a;
+
+  /* ===============================
+     Text Colors (Light Mode)
+     =============================== */
+
+  --pc-text-main: #0f172a;
+  --pc-text-soft: #475569;
+  --pc-heading-color: #0f172a;
+
+  /* ===============================
+     Surface Layers (KEY PART)
+     =============================== */
+
+  /* CARDS (pure white) */
+  --pc-surface-0: #ffffff;
+
+  /* PAGE */
+  --pc-surface-1: #F1F5F9;
+
+  /* SECTIONS / STRIPES */
+  --pc-surface-2: #E2E8F0;
+
+  /* DIVIDERS */
+  --pc-surface-3: #CBD5E1;
+
+  /* ===============================
+     Status Colors
+     =============================== */
+
+  --pc-success: #2e7d32;
+  --pc-warning: #ed6c02;
+  --pc-error: #c62828;
+
+  /* ===============================
+     Typography
+     =============================== */
+
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--pc-text-main);
+  background-color: var(--pc-bg-page);
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+
+/* =========================================================
+   Page Foundation
+   ========================================================= */
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: var(--pc-surface-1);
 }
 
+/* Remove Vite demo centering */
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
+  display: block;
   min-width: 320px;
-  min-height: 100vh;
 }
+
+/* =========================================================
+   Typography
+   ========================================================= */
 
 h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+  font-size: 1.75rem;
+  line-height: 1.25;
+  margin: 0 0 1.25rem 0;
+  font-weight: 600;
+
+  /* 🔑 Explicit color */
+  color: var(--pc-heading-color);
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
+
+h2 {
+  font-size: 1.25rem;
+  margin: 0 0 0.75rem 0;
+  color: var(--pc-text-soft);
+}
+
+p {
+  margin: 0 0 1rem 0;
+  color: var(--pc-text-muted);
+}
+
+/* =========================================================
+   Links
+   ========================================================= */
+
+a {
+  color: var(--pc-primary);
   font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  text-decoration: none;
 }
 
-.card {
-  padding: 2em;
+a:hover {
+  color: var(--pc-primary-dark);
 }
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
+/* =========================================================
+   Cards / Panels
+   ========================================================= */
+
+.card,
+.p-card {
+  background-color: var(--pc-surface-0);
+  border: 1px solid var(--pc-surface-3);
+  border-radius: 10px;
+
+  /* 👇 soft professional shadow */
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+
+/* =========================================================
+   Utility Helpers
+   ========================================================= */
+
+.text-muted {
+  color: var(--pc-text-muted);
+}
+
+.text-success {
+  color: var(--pc-success);
+}
+
+.text-warning {
+  color: var(--pc-warning);
+}
+
+.text-error {
+  color: var(--pc-error);
+}
+
+.content {
+  flex: 1;
   padding: 2rem;
-  text-align: center;
+
+  background-color: var(--pc-surface-1);
+  color: var(--pc-text-main);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
+.section-muted {
+  background-color: var(--pc-surface-2);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+/* =========================================================
+   Layout Helpers
+   ========================================================= */
+
+@media (max-width: 1023px) {
+  .layout.sidebar-open {
+    padding-left: 0;
   }
 }

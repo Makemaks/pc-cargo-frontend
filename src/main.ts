@@ -1,5 +1,69 @@
 import { createApp } from 'vue'
-import './style.css'
-import App from './App.vue'
+import { createPinia } from 'pinia'
+import PrimeVue from 'primevue/config'
+import ToastService from 'primevue/toastservice'
 
-createApp(App).mount('#app')
+import App from './App.vue'
+import router from './router'
+
+/* =========================
+   PrimeVue Theme
+========================= */
+import Lara from '@primevue/themes/lara'
+import 'primeicons/primeicons.css'
+
+/* =========================
+   PrimeVue Components
+========================= */
+import Button from 'primevue/button'
+import Card from 'primevue/card'
+import Dropdown from 'primevue/dropdown'
+import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
+import Divider from 'primevue/divider'
+import Fieldset from 'primevue/fieldset'
+import Steps from 'primevue/steps'
+import ProgressSpinner from 'primevue/progressspinner'
+import Toast from 'primevue/toast'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Tag from 'primevue/tag'
+import ConfirmationService from 'primevue/confirmationservice'
+import ConfirmDialog from 'primevue/confirmdialog'
+
+/* =========================
+   App Init
+========================= */
+const app = createApp(App)
+
+app.use(createPinia())
+app.use(router)
+app.use(ConfirmationService)
+
+app.use(PrimeVue, {
+  theme: {
+    preset: Lara,
+  },
+})
+
+app.use(ToastService)
+
+/* =========================
+   Global Component Registration
+========================= */
+app.component('Button', Button)
+app.component('DataTable', DataTable)
+app.component('Column', Column)
+app.component('ConfirmDialog', ConfirmDialog)
+app.component('Tag', Tag)
+app.component('Card', Card)
+app.component('Dropdown', Dropdown)
+app.component('InputText', InputText)
+app.component('InputNumber', InputNumber)
+app.component('Divider', Divider)
+app.component('Fieldset', Fieldset)
+app.component('Steps', Steps)
+app.component('ProgressSpinner', ProgressSpinner)
+app.component('Toast', Toast)
+
+app.mount('#app')
