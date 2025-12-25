@@ -197,15 +197,11 @@ const original = {
 
 
 const clientStore = useClientStore()
-const clientOptions = computed(() => clientStore.clients)
+const clientOptions = computed(() => clientStore.list)
 
 onMounted(async () => {
   try {
     isLoading.value = true
-
-    if (!clientStore.clients.length) {
-      await ClientService.all()
-    }
 
     if (isEdit.value && jobId.value !== null) {
       console.log('[Job Load] ID:', jobId.value)
@@ -251,6 +247,10 @@ onMounted(async () => {
     })
   } finally {
     isLoading.value = false
+  }
+  
+  if (!clientStore.list.length) {
+    await clientStore.fetchAll()
   }
 })
 
@@ -378,8 +378,6 @@ async function submit() {
   /* ---------- FRONTEND VALIDATION ---------- */
   console.group('🔍 Validation')
 
-  logStep('Client ID', form.client_id)
-
   if (!form.client_id) {
     toast.add({
       severity: 'warn',
@@ -390,9 +388,6 @@ async function submit() {
     console.groupEnd()
     return
   }
-
-  logStep('Transports count (current)', form.transports.length)
-  logStep('Transports count (original)', original.transports.length)
 
   if (form.transports.length === 0) {
     toast.add({
@@ -405,35 +400,7 @@ async function submit() {
     return
   }
 
-
   for (const [index, t] of form.transports.entries()) {
-    const isNew = !t.id
-    const originalT = t.id
-      ? original.transports.find(o => o.id === t.id)
-      : null
-
-    const isChanged =
-      isNew ||
-      (originalT &&
-      hasChanged(originalT, t, [
-        'transport_mode',
-        'origin',
-        'destination',
-        'sequence',
-        'status',
-      ]))
-
-    logStep(`Transport[${index}] inspect`, {
-      id: t.id,
-      typeofId: typeof t.id,
-      isNew,
-      isChanged,
-      origin: t.origin,
-      destination: t.destination,
-    })
-
-    if (!isChanged) continue
-
     if (!t.origin || !t.destination) {
       toast.add({
         severity: 'warn',
@@ -447,50 +414,44 @@ async function submit() {
   }
 
   console.groupEnd() // Validation
-
   isLoading.value = true
 
   try {
-    /* ---------- JOB ---------- */
-    console.group('💼 Job')
+    let resolvedJobId: number
 
-  logStep('Mode', isEdit.value ? 'UPDATE' : 'CREATE')
+    /* =====================================================
+     | JOB CREATE (ONLY FOR NEW)
+     ===================================================== */
+    if (!isEdit.value) {
+      console.group('💼 Job CREATE')
 
-  const jobPayload = {
-    client_id: form.client_id,
-    status: form.status,
-    currency: form.currency,
-  }
+      const job = await JobService.create({
+        client_id: form.client_id,
+        status: form.status,
+        currency: form.currency,
+      })
 
-  const job = isEdit.value && jobId.value !== null
-    ? await JobService.update(jobId.value, jobPayload)
-    : await JobService.create(jobPayload)
+      resolvedJobId = job.id
+      console.log('Job created:', job)
+      console.groupEnd()
+    } else {
+      resolvedJobId = jobId.value!
+    }
 
-
-    logStep('Job saved', { id: job.id, status: job.status })
-    console.groupEnd()
-
-    /* ---------- TRANSPORTS ---------- */
+    /* =====================================================
+     | TRANSPORTS
+     ===================================================== */
     console.group('🚚 Transports')
 
-    const removedTransports = original.transports.filter(
-      o => !form.transports.find(t => t.id === o.id)
-    )
-
-    for (const t of removedTransports) {
-      logDecision('DELETE', 'transport', { id: t.id })
-      await JobTransportService.remove(job.id, t.id)
+    for (const t of original.transports.filter(
+      o => !form.transports.find(n => n.id === o.id)
+    )) {
+      await JobTransportService.remove(resolvedJobId, t.id)
     }
 
     for (const t of form.transports) {
-      logStep('Transport inspect', {
-        id: t.id,
-        typeofId: typeof t.id,
-      })
-
       if (!t.id) {
-        logDecision('CREATE', 'transport', t)
-        await JobTransportService.create(job.id, {
+        await JobTransportService.create(resolvedJobId, {
           transport_mode: t.transport_mode,
           sequence: t.sequence,
           origin: t.origin,
@@ -501,31 +462,17 @@ async function submit() {
       }
 
       const originalT = original.transports.find(o => o.id === t.id)
-      if (!originalT) {
-        console.warn('⚠️ Missing original transport', t)
-        continue
-      }
+      if (!originalT) continue
 
-      const changed = hasChanged(originalT, t, [
+      if (!hasChanged(originalT, t, [
         'transport_mode',
         'origin',
         'destination',
         'sequence',
         'status',
-      ])
+      ])) continue
 
-      if (!changed) {
-        logDecision('SKIP', 'transport', { id: t.id })
-        continue
-      }
-
-      logDecision('UPDATE', 'transport', {
-        id: t.id,
-        from: originalT,
-        to: t,
-      })
-
-      await JobTransportService.update(job.id, t.id, {
+      await JobTransportService.update(resolvedJobId, t.id, {
         transport_mode: t.transport_mode,
         sequence: t.sequence,
         origin: t.origin,
@@ -536,22 +483,20 @@ async function submit() {
 
     console.groupEnd()
 
-    /* ---------- COSTS ---------- */
+    /* =====================================================
+     | COSTS
+     ===================================================== */
     console.group('💸 Costs')
 
-    const removedCosts = original.costs.filter(
-      o => !form.costs.find(c => c.id === o.id)
-    )
-
-    for (const c of removedCosts) {
-      logDecision('DELETE', 'cost', { id: c.id })
-      await JobCostService.remove(job.id, c.id)
+    for (const c of original.costs.filter(
+      o => !form.costs.find(n => n.id === o.id)
+    )) {
+      await JobCostService.remove(resolvedJobId, c.id)
     }
 
     for (const c of form.costs.filter(c => c.description && c.amount > 0)) {
       if (!c.id) {
-        logDecision('CREATE', 'cost', c)
-        await JobCostService.create(job.id, {
+        await JobCostService.create(resolvedJobId, {
           description: c.description,
           amount: c.amount,
           currency: form.currency,
@@ -562,20 +507,9 @@ async function submit() {
       const originalC = original.costs.find(o => o.id === c.id)
       if (!originalC) continue
 
-      const changed = hasChanged(originalC, c, [
-        'description',
-        'amount',
-        'currency',
-      ])
+      if (!hasChanged(originalC, c, ['description', 'amount'])) continue
 
-      if (!changed) {
-        logDecision('SKIP', 'cost', { id: c.id })
-        continue
-      }
-
-      logDecision('UPDATE', 'cost', { id: c.id })
-
-      await JobCostService.update(job.id, c.id, {
+      await JobCostService.update(resolvedJobId, c.id, {
         description: c.description,
         amount: c.amount,
         currency: form.currency,
@@ -584,22 +518,20 @@ async function submit() {
 
     console.groupEnd()
 
-    /* ---------- REVENUES ---------- */
+    /* =====================================================
+     | REVENUES
+     ===================================================== */
     console.group('💰 Revenues')
 
-    const removedRevenues = original.revenues.filter(
-      o => !form.revenues.find(r => r.id === o.id)
-    )
-
-    for (const r of removedRevenues) {
-      logDecision('DELETE', 'revenue', { id: r.id })
-      await JobRevenueService.remove(job.id, r.id)
+    for (const r of original.revenues.filter(
+      o => !form.revenues.find(n => n.id === o.id)
+    )) {
+      await JobRevenueService.remove(resolvedJobId, r.id)
     }
 
     for (const r of form.revenues.filter(r => r.description && r.amount > 0)) {
       if (!r.id) {
-        logDecision('CREATE', 'revenue', r)
-        await JobRevenueService.create(job.id, {
+        await JobRevenueService.create(resolvedJobId, {
           description: r.description,
           amount: r.amount,
           currency: form.currency,
@@ -610,20 +542,9 @@ async function submit() {
       const originalR = original.revenues.find(o => o.id === r.id)
       if (!originalR) continue
 
-      const changed = hasChanged(originalR, r, [
-        'description',
-        'amount',
-        'currency',
-      ])
+      if (!hasChanged(originalR, r, ['description', 'amount'])) continue
 
-      if (!changed) {
-        logDecision('SKIP', 'revenue', { id: r.id })
-        continue
-      }
-
-      logDecision('UPDATE', 'revenue', { id: r.id })
-
-      await JobRevenueService.update(job.id, r.id, {
+      await JobRevenueService.update(resolvedJobId, r.id, {
         description: r.description,
         amount: r.amount,
         currency: form.currency,
@@ -632,7 +553,20 @@ async function submit() {
 
     console.groupEnd()
 
-    console.groupEnd() // Job Save
+    /* =====================================================
+     | JOB UPDATE (ALWAYS LAST)
+     ===================================================== */
+    if (isEdit.value) {
+      console.group('💼 Job UPDATE (FINAL)')
+
+      await JobService.update(resolvedJobId, {
+        client_id: form.client_id,
+        status: form.status,
+        currency: form.currency,
+      })
+
+      console.groupEnd()
+    }
 
     toast.add({
       severity: 'success',
@@ -645,8 +579,7 @@ async function submit() {
   } catch (error: any) {
     console.group('❌ Job Save Error')
     console.error('Trace ID:', traceId)
-    console.error('Error:', error)
-    console.error('Response:', error?.response)
+    console.error(error)
     console.groupEnd()
 
     const response = error?.response
@@ -655,38 +588,36 @@ async function submit() {
       toast.add({
         severity: 'error',
         summary: 'Network Error',
-        detail: 'Unable to reach the server. Please check your connection.',
-        life: 6000,
+        detail: 'Unable to reach the server.',
       })
       return
     }
 
-    const { status, data } = response
-
-    if (status === 422 && data?.errors) {
-      Object.values(data.errors).flat().forEach((message: any) => {
-        toast.add({
-          severity: 'warn',
-          summary: 'Validation Error',
-          detail: String(message),
-          life: 6000,
-        })
-      })
+    if (response.status === 422 && response.data?.errors) {
+      Object.values(response.data.errors)
+        .flat()
+        .forEach((msg: any) =>
+          toast.add({
+            severity: 'warn',
+            summary: 'Validation Error',
+            detail: String(msg),
+          })
+        )
       return
     }
 
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: data?.message ?? 'Unexpected error occurred.',
-      life: 6000,
+      detail: response.data?.message ?? 'Unexpected error occurred',
     })
 
   } finally {
     isLoading.value = false
-    console.groupEnd() // Root
+    console.groupEnd()
   }
 }
+
 
 </script>
 

@@ -109,7 +109,6 @@
 import { computed, onMounted } from 'vue'
 import Card from 'primevue/card'
 import Chart from 'primevue/chart'
-import JobService from '@/app/services/jobs'
 import { useJobStore } from '@/app/stores/job'
 
 /* ===============================
@@ -117,17 +116,19 @@ import { useJobStore } from '@/app/stores/job'
 =============================== */
 const jobStore = useJobStore()
 
+/**
+ * Always fetch jobs on dashboard entry
+ * (SPA navigation does not reinitialize state)
+ */
 onMounted(async () => {
-  if (jobStore.list.length === 0) {
-    await JobService.all()
-  }
+  await jobStore.fetchAll()
 })
 
 /* ===============================
-   KPI COMPUTATIONS (REAL DATA)
+   KPI COMPUTATIONS
 =============================== */
 const activeJobs = computed(
-  () => jobStore.list.filter(j => j.status === 'in_transit').length
+  () => jobStore.list.filter(j => j.status === 'in_progress').length
 )
 
 const completedJobs = computed(
@@ -153,14 +154,14 @@ const totalGrossProfit = computed(() =>
 =============================== */
 const jobStatusChartData = computed(() => {
   const draft = jobStore.list.filter(j => j.status === 'draft').length
-  const inTransit = jobStore.list.filter(j => j.status === 'in_transit').length
+  const inProgress = jobStore.list.filter(j => j.status === 'in_progress').length
   const completed = jobStore.list.filter(j => j.status === 'completed').length
 
   return {
-    labels: ['Draft', 'In Transit', 'Completed'],
+    labels: ['Draft', 'In Progress', 'Completed'],
     datasets: [
       {
-        data: [draft, inTransit, completed],
+        data: [draft, inProgress, completed],
         backgroundColor: ['#9AA6B2', '#2c2a72', '#2563eb'],
       },
     ],
@@ -224,7 +225,6 @@ const revenueTrendData = computed(() => {
 
 /* ===============================
    CHART OPTIONS
-   (REFERENCE STYLE — NO FORCED HEIGHT)
 =============================== */
 const chartOptions = {
   plugins: {
@@ -234,12 +234,8 @@ const chartOptions = {
     },
   },
   scales: {
-    x: {
-      ticks: { color: '#9AA6B2' },
-    },
-    y: {
-      ticks: { color: '#9AA6B2' },
-    },
+    x: { ticks: { color: '#9AA6B2' } },
+    y: { ticks: { color: '#9AA6B2' } },
   },
 }
 

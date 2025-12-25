@@ -18,14 +18,15 @@ export function useJobPage() {
   const selectedJob = ref<any | null>(null)
 
   /**
-   * Load jobs
+   * Always reload jobs on page entry
+   * (SPA navigation does not reinitialize state)
    */
-  onMounted(() => {
-    jobStore.fetchAll()
+  onMounted(async () => {
+    await jobStore.fetchAll()
   })
 
   /**
-   * Table rows (UI model)
+   * Table rows (UI-safe projection)
    */
   const jobs = computed(() =>
     jobStore.list.map(job => ({
@@ -33,8 +34,8 @@ export function useJobPage() {
       reference: job.reference,
       client: job.client?.name ?? '',
       status: job.status,
-      revenue: job.financials.totalRevenue,
-      profit: job.financials.grossProfit,
+      revenue: job.financials?.totalRevenue ?? 0,
+      profit: job.financials?.grossProfit ?? 0,
     }))
   )
 
@@ -90,6 +91,9 @@ export function useJobPage() {
       accept: async () => {
         try {
           await jobStore.deleteJob(job.id)
+
+          // Ensure UI reflects deletion immediately
+          await jobStore.fetchAll()
 
           toast.add({
             severity: 'success',

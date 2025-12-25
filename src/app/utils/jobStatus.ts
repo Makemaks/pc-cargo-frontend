@@ -17,24 +17,3 @@ export function jobStatusSeverity(status: JobStatus) {
     default: return 'secondary'
   }
 }
-
-/* =========================
-   Transport helpers (UI)
-========================= */
-export function transportIcon(mode?: string) {
-  switch (mode) {
-    case 'road': return 'mdi:truck'
-    case 'sea': return 'mdi:ferry'
-    case 'air': return 'mdi:airplane'
-    default: return 'mdi:map-marker'
-  }
-}
-
-export function transportModeLabel(mode?: string) {
-  switch (mode) {
-    case 'road': return 'Road'
-    case 'sea': return 'Sea'
-    case 'air': return 'Air'
-    default: return mode ?? ''
-  }
-}
