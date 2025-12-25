@@ -1,28 +1,15 @@
 /**
- * ============
+ * ==========================
  * Job Domain Types
- * ============
- * Mirrors backend JobResource
+ * ==========================
  */
 
-export interface JobClient {
-  id: number
-  name: string
-}
+import type { Client } from './client'
 
-/**
- * Transport summary (used in lists / tables)
- */
-export interface JobTransportSummary {
-  transportMode: string
-  origin: string
-  destination: string
-  status: string
-}
+/* =========================
+   TRANSPORT TYPES
+========================= */
 
-/**
- * Full transport leg
- */
 export interface JobTransport {
   id: number
   sequence: number
@@ -34,6 +21,10 @@ export interface JobTransport {
   updatedAt: string | null
 }
 
+/* =========================
+   INTERNAL FINANCIALS
+========================= */
+
 export interface JobFinancials {
   totalCosts: number
   totalRevenue: number
@@ -41,18 +32,16 @@ export interface JobFinancials {
   grossProfit: number
 }
 
-/**
- * Job returned from API (JobResource)
- */
+/* =========================
+   INTERNAL JOB (AUTH)
+========================= */
+
 export interface Job {
   id: number
   reference: string
+  client: Client
 
-  client: JobClient
-
-  transport: JobTransportSummary | null
   transports: JobTransport[]
-
   status: 'draft' | 'in_transit' | 'completed'
 
   createdAt: string | null
@@ -65,34 +54,62 @@ export interface Job {
   adjustments: unknown[]
 }
 
+/* =========================
+   PAYMENTS (PUBLIC SAFE)
+========================= */
+
+export interface PublicPayment {
+  id: number
+  method: 'paypal' | 'stripe'
+  status: 'paid' | 'pending' | 'failed'
+  receivedAt: string | null
+}
+
+/* =========================
+   PUBLIC JOB (REFERENCE)
+========================= */
+
+export interface PublicJob {
+  id: number
+  reference: string
+
+  /**
+   * Limited client info
+   */
+  client: Pick<Client, 'id' | 'name'> | null
+
+  transports: JobTransport[]
+
+  /**
+   * Payable amount (revenue-derived)
+   */
+  total_amount: number
+  currency: string
+
+  /**
+   * Payment summary
+   */
+  payments: PublicPayment[]
+
+  status: 'draft' | 'in_transit' | 'completed'
+  is_paid: boolean
+}
 
 /* =========================
    REQUEST / FORM TYPES
 ========================= */
 
-/**
- * Transport payload sent to backend
- * (matches StoreJobRequest)
- */
 export interface JobTransportPayload {
   transport_mode: string
   origin: string
   destination: string
 }
 
-/**
- * Create Job payload (POST /jobs)
- * Matches StoreJobRequest exactly
- */
 export interface CreateJobPayload {
   client_id: number
   status: 'draft' | 'in_transit' | 'completed'
 }
 
-
-/**
- * Job form state (frontend only)
- */
 export interface JobForm {
   client_id: number | null
   status: 'draft' | 'in_transit' | 'completed'
@@ -101,19 +118,10 @@ export interface JobForm {
   revenues: { description: string; amount: number }[]
 }
 
-/**
- * Transport modes
- * Mirrors backend TransportMode enum
- */
 export type TransportMode = 'road' | 'sea' | 'air'
 
-/**
- * Update Job payload (PUT /jobs/{id})
- * Core job fields ONLY
- */
 export interface UpdateJobPayload {
   client_id: number
   status: 'draft' | 'in_transit' | 'completed'
   currency?: string
 }
-

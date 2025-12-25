@@ -1,5 +1,4 @@
 <template>
-  <!-- PERMANENT DESKTOP SIDEBAR -->
   <aside
     class="pc-sidebar sidebar-container"
     role="navigation"
@@ -19,7 +18,6 @@
         <span class="brand-text">PC Cargo</span>
       </div>
     </header>
-
 
     <!-- Navigation -->
     <nav class="sidebar-menu">
@@ -59,14 +57,31 @@
             <span class="menu-text">Reports</span>
           </button>
         </li>
+
+        <!-- PUSH TO BOTTOM -->
+        <li class="menu-spacer"></li>
+
+        <!-- Logout -->
+        <li class="menu-item">
+          <button
+            class="menu-link logout-link"
+            @click="logout"
+          >
+            <i class="pi pi-sign-out menu-icon" />
+            <span class="menu-text">Logout</span>
+          </button>
+        </li>
       </ul>
     </nav>
 
     <!-- Footer -->
     <footer class="sidebar-footer">
-      <div class="user-avatar">JM</div>
+      <div class="user-avatar">
+        {{ initials }}
+      </div>
+
       <div class="user-info">
-        <span class="user-name">John Mark</span>
+        <span class="user-name">{{ userName }}</span>
         <span class="user-role">Administrator</span>
       </div>
     </footer>
@@ -74,10 +89,13 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/app/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 
 function go(path: string) {
   router.push(path)
@@ -86,19 +104,39 @@ function go(path: string) {
 function isActive(path: string) {
   return route.path.startsWith(path)
 }
+
+async function logout() {
+  await authStore.logout()
+  router.push('/login')
+}
+
+const userName = computed(() => authStore.user?.name ?? 'User')
+
+const initials = computed(() => {
+  const name = userName.value.split(' ')
+  return name.length >= 2
+    ? `${name[0][0]}${name[1][0]}`
+    : name[0][0]
+})
 </script>
+
+
 <style scoped>
 /* Root sidebar */
 .pc-sidebar {
-  width: 280px; /* slightly wider */
-  flex-shrink: 0;
-
-  position: sticky;
-  top: 0;
+  width: 280px;
   height: 100vh;
 
+  position: fixed;
+  top: 0;
+  left: 0;
+
   border-right: 1px solid var(--pc-border);
+  background-color: var(--pc-bg-sidebar);
+
+  z-index: 100; /* ensure it stays above content */
 }
+
 
 /* Container */
 .sidebar-container {

@@ -1,0 +1,30 @@
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+}
+
+/* Form group spacing */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.75rem; /* <-- this is the spacing you want */
+}
+
+/* Labels */
+.form-label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+/* Normalize ALL PrimeVue inputs */
+.form-group :deep(.p-inputtext),
+.form-group :deep(.p-password),
+.form-group :deep(.p-password-input) {
+  width: 100%;
+  display: block;
+}
+
+/* Make password wrapper behave like input */
+.form-group :deep(.p-password) {
+  display: block;
+}

@@ -31,6 +31,7 @@ import Tag from 'primevue/tag'
 import ConfirmationService from 'primevue/confirmationservice'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Dialog from 'primevue/dialog'
+import Password from 'primevue/password'
 
 /* =========================
    App Init
@@ -53,6 +54,7 @@ app.use(ToastService)
    Global Component Registration
 ========================= */
 app.component('Dialog', Dialog)
+app.component('Password', Password)
 app.component('Button', Button)
 app.component('DataTable', DataTable)
 app.component('Column', Column)
